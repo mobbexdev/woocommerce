@@ -26,7 +26,7 @@ return [
         'default'     => '',
     ],
 
-    'test_mode' => [
+    'test' => [
         'title'   => __('Enable/Disable Test Mode', 'mobbex-for-woocommerce'),
         'type'    => 'checkbox',
         'label'   => __('Enable Test Mode.', 'mobbex-for-woocommerce'),

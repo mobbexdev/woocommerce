@@ -161,7 +161,7 @@ class Init
      */
     public function load_payment_options($options)
     {
-        if (is_cart() || is_order_received_page() || !is_checkout() || !$this->helper->isReady() || empty($options['mobbex']))
+        if (is_cart() || is_order_received_page() || !is_checkout() || !$this->config->isReady() || empty($options['mobbex']))
             return $options;
 
         // Get checkout from context loaded object
@@ -183,7 +183,7 @@ class Init
      */
     public function load_payment_template($template, $template_name, $args)
     {
-        if (!$this->helper->isReady() || $template_name != 'checkout/payment-method.php' || $args['gateway']->id != 'mobbex' || $this->config->disable_template == 'yes')
+        if (!$this->config->isReady() || $template_name != 'checkout/payment-method.php' || $args['gateway']->id != 'mobbex' || $this->config->disable_template == 'yes')
             return $template;
 
         return __DIR__ . '/../templates/payment-options.php';

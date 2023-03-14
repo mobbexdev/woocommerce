@@ -57,7 +57,6 @@ class MobbexGateway
         self::$logger    = new \Mobbex\WP\Checkout\Models\Logger();
         self::$registrar = new \Mobbex\WP\Checkout\Models\Registrar();
 
-
         MobbexGateway::load_textdomain();
         MobbexGateway::load_update_checker();
         MobbexGateway::check_dependencies();
@@ -98,7 +97,7 @@ class MobbexGateway
                 'Mobbex for Woocommerce' => MOBBEX_VERSION,
                 'sdk'                    => class_exists('\Composer\InstalledVersions') ? \Composer\InstalledVersions::getVersion('mobbexco/php-plugins-sdk') : '',
             ],
-            self::$config->settings,
+            self::$config->formated_settings(),
             [self::$registrar, 'execut_hook'],
             [self::$logger, 'log']
         );

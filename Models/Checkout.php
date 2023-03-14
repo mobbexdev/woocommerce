@@ -2,7 +2,7 @@
 
 namespace Mobbex\WP\Checkout\Models;
 
-class MobbexCheckout
+class Checkout
 {
     public $total = 0;
 
@@ -18,35 +18,23 @@ class MobbexCheckout
 
     public $items = [];
 
-    public $merchants = [];
-
     public $installments = [];
 
     public $endpoints = [];
 
-    /** Module configured options */
-    public $settings = [];
-
     /** @var \Mobbex\WP\Checkout\Models\Config */
     public $config;
-
-    /** @var MobbexApi */
-    public $api;
 
     /** Name of hook to execute when body is filtered */
     public $filter = '';
 
     /**
      * Constructor.
-     * 
-     * @param array $settings Module configured options.
-     * @param MobbexApi $api API conector.
      * @param string $filter Name of hook to execute when body is filtered.
      */
-    public function __construct($api, $filter = 'mobbex_checkout_custom_data')
+    public function __construct($filter = 'mobbex_checkout_custom_data')
     {
         $this->config = new \Mobbex\WP\Checkout\Models\Config;
-        $this->api    = $api;
         $this->filter = $filter;
     }
 
@@ -57,57 +45,19 @@ class MobbexCheckout
      */
     public function create()
     {
-        $data = [
-            'uri'    => 'checkout',
-            'method' => 'POST',
-            'body'   => apply_filters($this->filter, [
-                'total'        => $this->total,
-                'webhook'      => $this->endpoints['webhook'],
-                'return_url'   => $this->endpoints['return'],
-                'reference'    => $this->reference,
-                'description'  => 'Pedido #' . $this->relation,
-                'test'         => $this->config->test_mode == 'yes',
-                'multicard'    => $this->config->multicard == 'yes',
-                'multivendor'  => $this->config->multivendor != 'no' ? $this->config->multivendor : false,
-                'wallet'       => $this->config->wallet == 'yes' && wp_get_current_user()->ID,
-                'intent'       => $this->config->payment_mode,
-                'timeout'      => (int)$this->config->timeout,
-                'items'        => $this->items,
-                'merchants'    => $this->merchants,
-                'installments' => $this->installments,
-                'customer'     => $this->customer,
-                'addresses'    => $this->addresses,
-                'webhooksType' => $this->webhooksType,
-                'options'      => [
-                    'embed'    => $this->config->button == 'yes',
-                    'domain'   => str_replace('www.', '', parse_url(home_url(), PHP_URL_HOST)),
-                    'theme'    => [
-                        'type'       => $this->config->visual_theme,
-                        'background' => $this->config->checkout_background_color,
-                        'header'     => [
-                            'name' => $this->config->checkout_title ?: get_bloginfo('name'),
-                            'logo' => $this->config->checkout_logo,
-                        ],
-                        'colors'     => [
-                            'primary' => $this->config->checkout_primary_color,
-                        ]
-                    ],
-                    'platform' => [
-                        'name'      => 'woocommerce',
-                        'version'   => MOBBEX_VERSION,
-                        'ecommerce' => [
-                            'wordpress'   => get_bloginfo('version'),
-                            'woocommerce' => WC_VERSION
-                        ]
-                    ],
-                    'redirect' => [
-                        'success' => true,
-                        'failure' => false,
-                    ],
-                ],
-            ], $this->relation)
-        ];
-        return $this->api->request($data);
+        $checkout = new \Mobbex\Modules\Checkout(
+            $this->relation,
+            $this->total,
+            $this->endpoints['return'],
+            $this->endpoints['webhook'],
+            $this->items,
+            $this->installments,
+            array_merge($this->customer),
+            $this->addresses,
+            $this->filter
+        );
+
+        return $checkout->response;
     }
 
     /**
@@ -176,7 +126,7 @@ class MobbexCheckout
 
             $this->addresses[] = [
                 'type'         => $type,
-                'country'      => $this->convert_country_code($object->$country()),
+                'country'      => \Mobbex\Repository::convertCountryCode($object->$country()),
                 'state'        => $object->$state(),
                 'city'         => $object->$city(),
                 'zipCode'      => $object->$postcode(),
@@ -186,20 +136,6 @@ class MobbexCheckout
             ];
 
         }
-    }
-
-    /**
-     * Converts the WooCommerce country codes to 3-letter ISO codes.
-     * 
-     * @param string $code 2-Letter ISO code.
-     * 
-     * @return string|null
-     */
-    public function convert_country_code($code)
-    {
-        $countries = include (__DIR__.'/../utils/iso-3166.php') ?: [];
-
-        return isset($countries[$code]) ? $countries[$code] : null;
     }
 
     /**
@@ -224,10 +160,6 @@ class MobbexCheckout
      */
     public function add_item($total, $quantity = 1, $description = null, $image = null, $entity = null, $subscription = null)
     {
-        // Try to add entity to merchants
-        if ($entity)
-            $this->merchants[] = ['uid' => $entity];
-
         if($subscription) {
             $this->items[] = [
                 'type'      => 'subscription',

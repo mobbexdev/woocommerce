@@ -2,7 +2,7 @@
 
 namespace Mobbex\WP\Checkout\Helper;
 
-class MobbexCartHelper
+class CartHelper
 {
     /** Cart instance ID */
     public $id;
@@ -45,11 +45,11 @@ class MobbexCartHelper
         // Try to configure api with order store credentials
         $store = $this->get_store();
 
-        $api_key      = !empty($store['api_key']) ? $store['api_key'] : $this->config->api_key;
-        $access_token = !empty($store['access_token']) ? $store['access_token'] : $this->config->access_token;
+        $api_key      = !empty($store['api_key']) ? $store['api_key'] : null;
+        $access_token = !empty($store['access_token']) ? $store['access_token'] : null;
 
-        $api      = new \Mobbex\WP\Checkout\Models\MobbexApi($api_key, $access_token);
-        $checkout = new \Mobbex\WP\Checkout\Models\MobbexCheckout($api, 'mobbex_cart_checkout_custom_data');
+        \Mobbex\Api::init($api_key, $access_token);
+        $checkout = new \Mobbex\WP\Checkout\Models\Checkout('mobbex_cart_checkout_custom_data');
 
         $this->add_initial_data($checkout);
         $this->add_items($checkout);
@@ -71,7 +71,7 @@ class MobbexCartHelper
     /**
      * Add cart initial data to checkout.
      * 
-     * @param MobbexCheckout $checkout
+     * @param \Mobbex\WP\Checkout\Models\Checkout $checkout
      */
     private function add_initial_data($checkout)
     {
@@ -87,7 +87,7 @@ class MobbexCartHelper
     /**
      * Add cart items to checkout.
      * 
-     * @param MobbexCheckout $checkout
+     * @param \Mobbex\WP\Checkout\Models\Checkout $checkout
      */
     private function add_items($checkout)
     {
@@ -98,7 +98,7 @@ class MobbexCartHelper
                 $item['line_total'],
                 $item['quantity'],
                 $item['data']->get_name(),
-                $this->helper->get_product_image($item['product_id']),
+                $this->config->get_product_image($item['product_id']),
                 $this->config->get_product_entity($item['product_id'])
             );
 
@@ -108,25 +108,26 @@ class MobbexCartHelper
     /**
      * Add installments configured to checkout.
      * 
-     * @param MobbexCheckout $checkout
+     * @param \Mobbex\WP\Checkout\Models\Checkout $checkout
      */
     private function add_installments($checkout)
     {
-        $inactive_plans = $active_plans = [];
+        $product_ids = [];
         $items = $this->cart->get_cart() ?: [];
-
+        
+        //Get products id
+        foreach ($items as $item)
+            $product_ids[] = $item['product_id'];
+        
         // Get plans from cart products
-        foreach ($items as $item) {
-            $inactive_plans = array_merge($inactive_plans, $this->helper::get_inactive_plans($item['product_id']));
-            $active_plans   = array_merge($active_plans, $this->helper::get_active_plans($item['product_id']));
-        }
-
-        // Block inactive (common) plans from installments
-        foreach ($inactive_plans as $plan_ref)
+        extract($this->config->get_catalog_plans($product_ids));
+        
+        // Block common plans from installments
+        foreach ($common_plans as $plan_ref)
             $checkout->block_installment($plan_ref);
 
-        // Add active (advanced) plans to installments (only if the plan is active on all products)
-        foreach (array_count_values($active_plans) as $plan_uid => $reps) {
+        // Add advanced plans to installments (only if the plan is active on all products)
+        foreach (array_count_values($advanced_plans) as $plan_uid => $reps) {
             if ($reps == count($items))
                 $checkout->add_installment($plan_uid);
         }
@@ -135,7 +136,7 @@ class MobbexCartHelper
     /**
      * Add cart customer data to checkout.
      * 
-     * @param MobbexCheckout $checkout
+     * @param \Mobbex\WP\Checkout\Models\Checkout $checkout
      */
     private function add_customer($checkout)
     {
@@ -164,7 +165,7 @@ class MobbexCartHelper
 
         // Search current store configured
         foreach ($items as $item) {
-            $store_id = $this->helper::get_store_from_product($item['product_id']);
+            $store_id = $this->config->get_store_from_product($item['product_id']);
 
             if ($store_id && isset($stores[$store_id]))
                 return $stores[$store_id];

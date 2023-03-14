@@ -70,13 +70,13 @@ class WC_Gateway_Mobbex extends WC_Payment_Gateway
     {
         $this->logger->log('Creating payment', compact('order_id'));
 
-        if (!$this->helper->isReady())
+        if (!$this->config->isReady())
             return ['result' => 'error'];
 
         $order = wc_get_order($order_id);
 
         // Create checkout from order
-        $order_helper  = new \Mobbex\WP\Checkout\Helper\MobbexOrderHelper($order);
+        $order_helper  = new \Mobbex\WP\Checkout\Helper\OrderHelper($order);
         $checkout_data = $order_helper->create_checkout();
 
         $this->logger->log('Checkout response', $checkout_data);
@@ -104,26 +104,26 @@ class WC_Gateway_Mobbex extends WC_Payment_Gateway
     {
         try {
             // Get parent and child transactions
-            $helper   = new \Mobbex\WP\Checkout\Helper\MobbexOrderHelper($order_id);
-            $parent   = $helper->get_parent_transaction();
-            $children = $helper->get_approved_children();
+            $order_helper = new \Mobbex\WP\Checkout\Helper\OrderHelper($order_id);
+            $transaction  = new \Mobbex\WP\Checkout\Models\Transaction($order_id);
+            $children     = $order_helper->get_approved_children($transaction);
 
             // Try to get child transaction from reason field
             $child = isset($children[$reason]) ? $children[$reason] : (sizeof($children) == 1 ? reset($children) : null);
 
-            if (!$parent)
+            if (!empty($transaction->payment_id))
                 throw new \Mobbex\Exception('No se encontró información de la transacción padre.', 596);
 
             // If use multicard and is not a total refund
-            if ($helper->has_childs($parent) && !$child && (float) $helper->order->get_remaining_refund_amount())
+            if (!empty($transaction->childs) && !$child && (float) $order_helper->order->get_remaining_refund_amount())
                 throw new \Mobbex\Exception('Para realizar una devolución parcial en este pedido, especifique el id de la transacción en el campo "Razón".', 596);
 
             // Make request
-            return $this->helper->api->request([
+            return \Mobbex\Api::request([
                 'method' => 'POST',
-                'uri'    => 'operations/' . ($child ?: $parent)['payment_id'] . '/refund',
+                'uri'    => 'operations/' . ($child ?: $transaction->payment_id) . '/refund',
                 'body'   => [
-                    'total'     => (float) $helper->order->get_remaining_refund_amount() ? $amount : null,
+                    'total'     => (float) $order_helper->order->get_remaining_refund_amount() ? $amount : null,
                     'emitEvent' => false,
                 ]
             ]);

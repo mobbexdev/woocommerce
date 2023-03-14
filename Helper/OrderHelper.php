@@ -2,12 +2,12 @@
 
 namespace Mobbex\WP\Checkout\Helper;
 
-class MobbexOrderHelper
+class OrderHelper
 {
     /** Order instance ID */
     public $id;
 
-    /** @var WC_Order */
+    /** @var \WC_Order */
     public $order;
 
     /** @var \Mobbex\WP\Checkout\Models\Config */
@@ -34,7 +34,7 @@ class MobbexOrderHelper
     /**
     * Constructor.
     * 
-    * @param WC_Order|int WooCommerce order instance or its id.
+    * @param \WC_Order|int WooCommerce order instance or its id.
     * @param \Mobbex\WP\Checkout\Models\Helper Base plugin helper.
     * @param \Mobbex\WP\Checkout\Models\Logger Base plugin debugger.
     */
@@ -58,11 +58,11 @@ class MobbexOrderHelper
         // Try to configure api with order store credentials
         $store = $this->get_store();
 
-        $api_key      = !empty($store['api_key']) ? $store['api_key'] : $this->config->api_key;
-        $access_token = !empty($store['access_token']) ? $store['access_token'] : $this->config->access_token;
+        $api_key      = !empty($store['api_key']) ? $store['api_key'] : null;
+        $access_token = !empty($store['access_token']) ? $store['access_token'] : null;
 
-        $api      = new \Mobbex\WP\Checkout\Models\MobbexApi($api_key, $access_token);
-        $checkout = new \Mobbex\WP\Checkout\Models\MobbexCheckout($api);
+        \Mobbex\Api::init($api_key, $access_token);
+        $checkout = new \Mobbex\WP\Checkout\Models\Checkout();
 
         $this->add_initial_data($checkout);
         $this->add_items($checkout);
@@ -73,7 +73,7 @@ class MobbexOrderHelper
             $response = $checkout->create();
         } catch (\Exception $e) {
             $response = null;
-            $this->logger->debug('Mobbex Checkout Creation Failed: ' . $e->getMessage(), isset($e->data) ? $e->data : '', true);
+            $this->logger->log('Mobbex Checkout Creation Failed: ' . $e->getMessage(), isset($e->data) ? $e->data : '', true);
         }
 
         do_action('mobbex_checkout_process', $response, $this->id);
@@ -84,7 +84,7 @@ class MobbexOrderHelper
     /**
      * Add order initial data to checkout.
      * 
-     * @param MobbexCheckout $checkout
+     * @param \Mobbex\WP\Checkout\Models\Checkout $checkout
      */
     private function add_initial_data($checkout)
     {
@@ -99,7 +99,7 @@ class MobbexOrderHelper
     /**
      * Add order items to checkout.
      * 
-     * @param MobbexCheckout $checkout
+     * @param \Mobbex\WP\Checkout\Models\Checkout $checkout
      */
     private function add_items($checkout)
     {
@@ -111,7 +111,7 @@ class MobbexOrderHelper
                 $item->get_total(),
                 $item->get_quantity(),
                 $item->get_name(),
-                $this->helper->get_product_image($item->get_product_id()),
+                $this->config->get_product_image($item->get_product_id()),
                 $this->config->get_product_entity($item->get_product_id()),
                 $this->config->get_product_subscription($item->get_product_id())
             );
@@ -123,25 +123,20 @@ class MobbexOrderHelper
     /**
      * Add installments configured to checkout.
      * 
-     * @param MobbexCheckout $checkout
+     * @param \Mobbex\WP\Checkout\Models\Checkout $checkout
      */
     private function add_installments($checkout)
     {
-        $inactive_plans = $active_plans = [];
-        $products = $this->helper::get_product_ids($this->order);
+        $products_ids = self::get_product_ids($this->order);
 
         // Get plans from order products
-        foreach ($products as $product_id) {
-            $inactive_plans = array_merge($inactive_plans, $this->helper::get_inactive_plans($product_id));
-            $active_plans   = array_merge($active_plans, $this->helper::get_active_plans($product_id));
-        }
-
-        // Block inactive (common) plans from installments
-        foreach ($inactive_plans as $plan_ref)
+        extract($this->config->get_catalog_plans($products_ids));
+        // Block common plans from installments
+        foreach ($common_plans as $plan_ref)
             $checkout->block_installment($plan_ref);
 
-        // Add active (advanced) plans to installments (only if the plan is active on all products)
-        foreach (array_count_values($active_plans) as $plan_uid => $reps) {
+        // Add advanced plans to installments (only if the plan is active on all products)
+        foreach (array_count_values($advanced_plans) as $plan_uid => $reps) {
             if ($reps == count($products))
                 $checkout->add_installment($plan_uid);
         }
@@ -150,11 +145,11 @@ class MobbexOrderHelper
     /**
      * Add order customer data to checkout.
      * 
-     * @param MobbexCheckout $checkout
+     * @param \Mobbex\WP\Checkout\Models\Checkout $checkout
      */
     private function add_customer($checkout)
     {
-        $user = new WP_User($this->order->get_user_id());
+        $user = new \WP_User($this->order->get_user_id());
 
         $checkout->set_customer(
             $this->order->get_formatted_billing_full_name() ?: $user->display_name,
@@ -179,7 +174,7 @@ class MobbexOrderHelper
 
         // Search store configured
         foreach ($items as $item) {
-            $store_id = $this->helper::get_store_from_product($item->get_product_id());
+            $store_id = $this->config->get_store_from_product($item->get_product_id());
 
             if ($store_id && !empty($stores[$store_id]))
                 return $stores[$store_id];
@@ -208,79 +203,15 @@ class MobbexOrderHelper
     }
 
     /**
-     * Retrieve the latest parent transaction for the order loaded.
-     * 
-     * @return array|null An asociative array with transaction values.
-     */
-    public function get_parent_transaction()
-    {
-        // Generate query params
-        $query = [
-            'operation' => 'SELECT *',
-            'table'     => $this->db->prefix . 'mobbex_transaction',
-            'condition' => "WHERE `order_id`='{$this->id}' AND `parent`='yes'",
-            'order'     => 'ORDER BY `id` DESC',
-            'limit'     => 'LIMIT 1',
-        ];
-
-        // Make request to db
-        $result = $this->db->get_results(
-            "$query[operation] FROM $query[table] $query[condition] $query[order] $query[limit];",
-            ARRAY_A
-        );
-
-        return isset($result[0]) ? $result[0] : null;
-    }
-
-    /**
-     * Retrieve all child transactions for the order loaded.
-     * 
-     * @return array[] A list of asociative arrays with transaction values.
-     */
-    public function get_child_transactions()
-    {
-        // Generate query params
-        $query = [
-            'operation' => 'SELECT *',
-            'table'     => $this->db->prefix . 'mobbex_transaction',
-            'condition' => "WHERE `order_id`='{$this->id}' AND `parent`='no'",
-            'order'     => 'ORDER BY `id` ASC',
-            'limit'     => 'LIMIT 50',
-        ];
-
-        // Make request to db
-        $result = $this->db->get_results(
-            "$query[operation] FROM $query[table] $query[condition] $query[order] $query[limit];",
-            ARRAY_A
-        );
-
-        return $result ?: [];
-    }
-
-    /**
-     * Formats the childs data
-     * 
-     * @param int $order_id
-     * @param array $childsData
-     * 
-     */
-    public function format_childs($order_id, $childsData)
-    {
-        foreach ($childsData as $child)
-            $childs[] = $this->helper->format_webhook_data($order_id, $child);
-        return $childs;
-    }
-
-    /**
      * Get approved child transactions from the order loaded (multicard only).
      * 
      * @return array[] Associative array with payment_id as key.
      */
-    public function get_approved_children()
+    public function get_approved_children($transaction)
     {
         $methods = [];
 
-        foreach ($this->get_child_transactions() as $child) {
+        foreach ($transaction->childs as $child) {
             // Filter cash methods and failed status
             if (!$child['source_number'] || !in_array($child['status_code'], $this->status_codes['approved']))
                 continue;
@@ -292,14 +223,39 @@ class MobbexOrderHelper
     }
 
     /**
-     * Check if the transaction given has multicard childs.
+     * Get all product IDs from Order.
      * 
-     * @param array $parent An asociative array with transaction values.
-     * 
-     * @return bool
+     * @param WP_Order $order
+     * @return array $products
      */
-    public function has_childs($parent)
+    public static function get_product_ids($order)
     {
-        return isset($parent['operation_type']) && $parent['operation_type'] == 'payment.multiple-sources';
+        $products = [];
+
+        foreach ($order->get_items() as $item)
+            $products[] = $item->get_product_id();
+
+        return $products;
+    }
+
+    /**
+     * Get all category IDs from Order.
+     * Duplicates are removed.
+     * 
+     * @param WP_Order $order
+     * @return array $categories
+     */
+    public static function get_category_ids($order)
+    {
+        $categories = [];
+
+        // Get Products Ids
+        $products = self::get_product_ids($order);
+
+        foreach ($products as $product)
+            $categories = array_merge($categories, wp_get_post_terms($product, 'product_cat', ['fields' => 'ids']));
+
+        // Remove duplicated IDs and return
+        return array_unique($categories);
     }
 }

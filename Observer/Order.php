@@ -93,9 +93,9 @@ class Order
             // If data look fine
             if (is_numeric($capture_total)) {
                 $order_id   = $order->get_id();
-                $payment_id = get_post_meta($order_id, 'mobbex_payment_id', true);
 
-                $result = $this->helper->capture_payment($payment_id, $capture_total);
+                $transaction = new \Mobbex\WP\Checkout\Models\Transaction($order_id);
+                $result = $transaction->capture_payment($capture_total);
 
                 if ($result) {
                     update_post_meta($order_id, 'mbbx_total_captured', $capture_total);
@@ -158,11 +158,8 @@ class Order
     {
         global $post;
 
-        $mbbxOrderHelp = new \Mobbex\WP\Checkout\Helper\MobbexOrderHelper(wc_get_order($post->ID));
-
         // Get transaction data
-        $parent  = $mbbxOrderHelp->get_parent_transaction();
-        $childs  = !empty($mbbxOrderHelp->get_child_transactions()) ? $mbbxOrderHelp->get_child_transactions() : $mbbxOrderHelp->format_childs($mbbxOrderHelp->id, json_decode($parent['childs'], true));
+        $transaction = new \Mobbex\WP\Checkout\Models\Transaction($post->ID);
 
         echo "<table><th colspan='2' class = 'mbbx-info-panel-th'><h4><b>" . __('Payment Information') . "</b></h4></th>";
 
@@ -175,20 +172,20 @@ class Order
         ];
 
         //Create payment info panel 
-        echo $this->create_panel($paymentInfo, $parent);
+        echo self::create_panel($paymentInfo, $transaction->format_webhook($transaction->data));
 
         echo "<th colspan='2' class = 'mbbx-info-panel-th'><h4><b>" . __('Payment Method') . "</b></h4></th>";
 
         //Create sources info panel
-        self::create_sources_panel($parent, $childs);
+        self::create_sources_panel($transaction->format_webhook($transaction->data), $transaction->childs);
 
         echo "<th colspan='2' class = 'mbbx-info-panel-th'><h4><b>" . __('Entities') . "</b></h4></th>";
 
         //Create entities info panel
-        self::create_entities_panel($parent, $childs);
+        self::create_entities_panel($transaction->format_webhook($transaction->data), $transaction->childs);
 
         //Create Coupon
-        self::create_coupon($parent);
+        self::create_coupon($transaction);
 ?>
         <style>
             .mbbx-color-column {
@@ -219,7 +216,7 @@ class Order
                 'Amount'      => 'installment_amount'
             ];
             foreach ($childs as $card) :
-                $this->create_panel($multipleCardArray, $card);
+                self::create_panel($multipleCardArray, $card);
                 echo "<tr class='mobbex-color-column'><td></td><td></td></tr>";
             endforeach;
         } else {
@@ -228,7 +225,7 @@ class Order
                 'Payment Source' => 'source_name',
                 'Source Number'  => 'source_number'
             ];
-            $this->create_panel($simpleCardArray, $parent);
+            self::create_panel($simpleCardArray, $parent);
             if (!empty($parent['source_installment']))
                 echo "<tr class='mobbex-color-column'><td>" . __('Source Installment:') . "</td><td>" . $parent['installment_count'] . ' cuota/s de $' . $parent['installment_amount'] . "</td></tr>";
         }
@@ -258,13 +255,12 @@ class Order
     /**
      * Create Coupon section
      * 
-     * @param array $parent
+     * @param \Mobbex\WP\Checkout\Models\Transaction $transaction
      */
-
-     public static function create_coupon($parent)
+     public static function create_coupon($transaction)
      {
-        $mbbxCouponUrl = "https://mobbex.com/console/" . $parent['entity_uid'] . "/operations/?oid=" . $parent['payment_id'];
-        echo "<tr><td>" . __('Coupon:') . "</td><td>" . (isset($parent['entity_uid']) && isset($parent['payment_id']) ? "<a href=" . $mbbxCouponUrl . ">VER</a>" : 'NO COUPON') . "</td></tr>";
+        $mbbxCouponUrl = "https://mobbex.com/console/" . $transaction->entity_uid . "/operations/?oid=" . $transaction->payment_id;
+        echo "<tr><td>" . __('Coupon:') . "</td><td>" . (isset($transaction->entity_uid) && isset($transaction->payment_id) ? "<a href=" . $mbbxCouponUrl . ">VER</a>" : 'NO COUPON') . "</td></tr>";
      }
 
     /**
@@ -273,7 +269,7 @@ class Order
      * @param array $labelsArray
      * @param array $transaction
      */
-    public function create_panel($labelsArray, $transaction)
+    public static function create_panel($labelsArray, $transaction)
     {
         $i = 1;
         foreach ($labelsArray as $label => $value) :

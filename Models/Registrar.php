@@ -91,7 +91,7 @@ class Registrar
             //Checkout observer
             ['name' => 'woocommerce_billing_fields', 'callback' => [$this->checkout, 'add_checkout_fields']]
         ];
-
+        
         return $filters;
     }
 
@@ -131,7 +131,7 @@ class Registrar
             $actions[] = ['name' => 'woocommerce_after_cart_totals', 'callback' => [$this->product, 'display_finnacial_button'], 'priority' => 1];
 
         //Checkout observer
-        if ($this->helper->isReady()){
+        if ($this->config->isReady()){
             $actions[] = ['name' => 'woocommerce_admin_order_data_after_billing_address', 'callback' => [$this->checkout, 'display_checkout_fields_data']];
             $actions[] = ['name' => 'woocommerce_after_checkout_validation', 'callback' => [$this->checkout, 'validate_checkout_fields']];
             $actions[] = ['name' => 'woocommerce_checkout_update_order_meta', 'callback' => [$this->checkout, 'save_checkout_fields']];

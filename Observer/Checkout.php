@@ -33,11 +33,11 @@ class Checkout
         $cart_items = !empty(WC()->cart->get_cart()) ? WC()->cart->get_cart() : [];
 
         // Get store from current product
-        $product_store = \Mobbex\WP\Checkout\Models\Helper::get_store_from_product($product_id);
+        $product_store = $this->config->get_store_from_product($product_id);
 
         // Get stores from cart items
         foreach ($cart_items as $item) {
-            $item_store = \Mobbex\WP\Checkout\Models\Helper::get_store_from_product($item['product_id']);
+            $item_store = $this->config->get_store_from_product($item['product_id']);
 
             // If there are different stores in the cart items
             if ($product_store != $item_store) {
@@ -58,7 +58,7 @@ class Checkout
      */
     public function add_checkout_fields($fields)
     {
-        if(!$this->helper->isReady() && $this->config->own_dni !== 'yes')
+        if(!$this->config->isReady() && $this->config->own_dni !== 'yes')
             return $fields;
 
         $cutomer_id = WC()->customer ? WC()->customer->get_id() : null;

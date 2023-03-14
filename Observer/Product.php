@@ -192,9 +192,12 @@ class Product
         wp_enqueue_script('mbbx-product-button-js', $dir_url . "assets/js/finance-widget.js", null, MOBBEX_VERSION);
         wp_enqueue_style('mobbex_product_style', $dir_url . 'assets/css/product.css', null, MOBBEX_VERSION);
 
+        //Get product plans
+        extract($this->config->get_catalog_plans($products_ids));
+
         $data = [
             'price'   => $price,
-            'sources' => $this->helper->get_sources($price, $this->helper->get_installments($products_ids)),
+            'sources' => \Mobbex\Repository::getSources($price, \Mobbex\Repository::getInstallments($products_ids, $common_plans, $advanced_plans)),
             'style'   => [
                 'show_button'   => isset($params['show_button']) ? $params['show_button'] : true,
                 'theme'         => $this->config->visual_theme,
