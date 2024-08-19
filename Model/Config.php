@@ -183,6 +183,21 @@ class Config
     }
 
     /**
+     * Return the subscription from a API.
+     * 
+     * @param int|string $product_id
+     * 
+     * @return array mobbex subscription
+     */
+    public function get_product_subscription($product_id)
+    {
+        return \Mobbex\Api::request([
+            'method' => 'GET',
+            'uri'    => "subscriptions/" . $this->get_product_subscription_uid($product_id)
+        ]) ?: [];
+    }
+
+    /**
      * Return the subscription UID from a product ID.
      * 
      * @param int|string $product_id
@@ -207,7 +222,7 @@ class Config
         try {
             // Try to get subscription data from cache; otherwise it get it from API
             $subscription = \Mobbex\Repository::getProductSubscription($this->get_product_subscription_uid($id), true);
-            return isset($subscription['setupFee']) ? $subscription['setupFee'] : '';
+            return isset($subscription['setupFee']) ? $subscription['setupFee'] : null;
         } catch (\Exception $e) {
             (new \Mobbex\WP\Checkout\Model\Logger)->log('error', 'Config > get_product_subscription_signup_fee | Failed obtaining setup fee: ' . $e->getMessage(), $subscription);
         }

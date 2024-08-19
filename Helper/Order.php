@@ -22,6 +22,15 @@ class Order
     /** @var wpdb */
     public $db;
 
+    /* product subscription */
+    public $subscription;
+
+    /* cart fee */
+    public $cart_fee;
+
+    /* shipping */
+    public $shipping = 0;
+
     public $status_codes = [
         'pending'    => [0, 1],
         'on-hold'    => [2, 100, 201],
@@ -69,6 +78,9 @@ class Order
         $this->add_installments($checkout);
         $this->add_customer($checkout);
         $this->maybe_add_signup_fee($checkout);
+
+        if (isset($this->subscription))
+            $this->set_gross_total($checkout);
 
         try {
             $response = $checkout->create();
@@ -130,21 +142,18 @@ class Order
      */
     private function add_items($checkout)
     {
-        $order_items    = $this->order->get_items() ?: [];
-        $shipping_items = $this->order->get_items('shipping') ?: [];
+        $order_items = array(
+            $this->order->get_items() ?: [], 
+            $this->order->get_items('fee') ?: [],
+            $this->order->get_items('coupon') ?: [],
+            $this->order->get_items('shipping') ?: []
+        );
 
-        foreach ($order_items as $item)
-            $checkout->add_item(
-                $this->calculate_item_price($item),
-                $item->get_quantity(),
-                $item->get_name(),
-                $this->helper->get_product_image($item->get_product_id()),
-                $this->config->get_product_entity($item->get_product_id()),
-                $this->config->get_product_subscription_uid($item->get_product_id())
-            );
+        if(empty($order_items))
+            return;
 
-        foreach ($shipping_items as $item)
-            $checkout->add_item($item->get_total(), 1, __('Shipping: ', 'mobbex-for-woocommerce') . $item->get_name());
+        foreach($order_items as $items)
+            $this->manage_items($items, $checkout);
     }
 
     /**
@@ -156,7 +165,9 @@ class Order
     {
         //If discounts are allowed return item price.
         if ($this->config->disable_discounts !== 'yes')
-            return $item->get_total();
+            return $this->config->get_product_subscription_uid($item->get_product_id()) ?
+                $item->get_subtotal() :
+                $item->get_total();
 
         // Warning: Use get_product instead of get_product_id to support variations
         $product = $item->get_product();
@@ -375,5 +386,79 @@ class Order
             }
 
         $checkout->total = $checkout->total - $signup_fee_totals;
+    }
+
+    /**
+     * Get subscription for product subscription
+     * 
+     * @param object $item
+     * 
+     * @return array $subscription
+     */
+    public function maybe_get_subscription_product($item)
+    {
+        $product_observer = new \Mobbex\WP\Checkout\Observer\Product;
+
+        if(!$product_observer->is_subscription($item->get_product_id()))
+            return null;
+
+        return $this->config->get_product_subscription($item->get_product_id());
+    }
+
+    /**
+     * Manage and configure order item data to add them to checkout
+     * 
+     * @param array $order_items 
+     * @param object $checkout
+     */
+    public function manage_items($order_items = [], $checkout)
+    {
+        foreach($order_items as $item) {
+            switch ($item->get_type()) {
+                case 'line_item':
+                    // Sets subscription property if an item is subscription product
+                    $this->subscription = $this->maybe_get_subscription_product($item);
+                    $checkout->add_item(
+                        $this->calculate_item_price($item),
+                        $item->get_quantity(),
+                        $item->get_name(),
+                        $this->helper->get_product_image($item->get_product_id()),
+                        $this->config->get_product_entity($item->get_product_id()),
+                        $this->config->get_product_subscription_uid($item->get_product_id()),
+                        $this->config->get_product_subscription_signup_fee($item->get_product_id())
+                    );
+                    break;
+                case 'fee':
+                    $this->cart_fee = $item->get_total();
+                    break;
+                case 'shipping':
+                    $this->shipping = $item->get_total();
+                    $checkout->add_item($item->get_total(), 1, __('Shipping: ', 'mobbex-for-woocommerce') . $item->get_name());
+                    break;
+                case 'coupon':
+                    $discount = $this->subscription ? $checkout->total - $this->subscription['total'] - $this->subscription['setupFee'] : $item->get_discount();
+                    $checkout->set_discount($discount);
+                    $checkout->add_item($discount, 1, __('Coupon: ', 'mobbex-for-woocommerce') . $item->get_name());
+                    break;
+            }
+        }
+    }
+
+    /**
+     * Calculates and sets the gross total of the payment order
+     * Required to calculate the true total of a subscription product
+     * 
+     * @param object $checkout
+     */
+    public function set_gross_total($checkout)
+    {
+        $gross_total = 0;
+
+        foreach ($checkout->items as $item)
+            $gross_total += isset($item['type']) == 'subscription' ? $item['total'] : 0;
+
+        $gross_total += $checkout->discount + $this->shipping;
+            
+        $checkout->total = $gross_total;
     }
 }

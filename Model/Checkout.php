@@ -22,6 +22,10 @@ class Checkout
 
     public $endpoints = [];
 
+    public $signup_fee = 0;
+
+    public $discount = 0;
+
     /** @var \Mobbex\WP\Checkout\Model\Config */
     public $config;
 
@@ -158,14 +162,16 @@ class Checkout
      * @param string|null $description
      * @param string|null $image
      * @param string|null $entity
+     * @param string|null $subscription
+     * @param int $fee
      */
-    public function add_item($total, $quantity = 1, $description = null, $image = null, $entity = null, $subscription = null)
+    public function add_item($total, $quantity = 1, $description = null, $image = null, $entity = null, $subscription = null, $fee = 0)
     {
         if($subscription) {
             $this->items[] = [
-                'type'      => 'subscription',
-                'reference' => $subscription,
-                'total'     => $total
+                'type'       => 'subscription',
+                'reference'  => $subscription,
+                'total'      => $total + $fee,
             ];
         } else {
             $this->items[] = compact('total', 'quantity', 'description', 'image', 'entity');
@@ -181,5 +187,29 @@ class Checkout
     public function add_installments($products, $common_plans, $advanced_plans)
     {
         $this->installments = \Mobbex\Repository::getInstallments($products, $common_plans, $advanced_plans);
+    }
+
+    /**
+     * Add sign up fee
+     * 
+     * @param string|int $signup_fee
+     * 
+     * @return string|int $signup_fee
+     */
+    public function set_signup_fee($signup_fee)
+    {
+        $this->signup_fee = $signup_fee;
+    }
+
+    /**
+     * Add discount amount
+     * 
+     * @param string|int $discount
+     * 
+     * @return string|int $discount
+     */
+    public function set_discount($discount)
+    {
+        $this->discount += $discount;
     }
 }
