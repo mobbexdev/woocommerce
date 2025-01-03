@@ -52,6 +52,7 @@ class Config
     public $return_timeout;
     public $process_webhook_retries;
     public $method_icon;
+    public $show_no_interest_labels;
 
     public function __construct()
     {

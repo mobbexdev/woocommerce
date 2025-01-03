@@ -264,6 +264,14 @@ background-color: #6f00ff;
         'class'       => 'mbbx-into-appearance',
     ],
 
+    'show_no_interest_labels' => [
+        'title'       => __('Hide installments at checkout', 'mobbex-for-woocommerce'),
+        'description' => __('Hide the "interest-free installments" labels in the checkout view.', 'mobbex-for-woocommerce'),
+        'type'        => 'checkbox',
+        'default'     => 'yes',
+        'class'       => 'mbbx-into-appearance',
+    ],
+
     /* Advanced options */
 
     'advanced_configuration_tab' => [
