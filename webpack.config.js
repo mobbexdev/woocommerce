@@ -1,6 +1,7 @@
 const defaultConfig = require('@wordpress/scripts/config/webpack.config');
 const WooCommerceDependencyExtractionWebpackPlugin = require('@woocommerce/dependency-extraction-webpack-plugin');
 const path = require('path');
+const fs = require('fs');
 
 const wcDepMap = {
 	'@woocommerce/blocks-registry': ['wc', 'wcBlocksRegistry'],
@@ -24,14 +25,30 @@ const requestToHandle = (request) => {
 	}
 };
 
+const getComponentEntries = () => {
+    const componentsDir = path.resolve(__dirname, 'src/components');
+    const entries = {};
+
+    // Verify directory
+    if (!fs.existsSync(componentsDir)) return entries;
+
+    // read components directories
+    fs.readdirSync(componentsDir, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .forEach(dirent => {
+            const componentName = dirent.name;
+            entries[`/${componentName}`] = path.resolve(componentsDir, componentName, 'index.jsx');
+        });
+
+    return entries;
+};
+
 // Export configuration.
 module.exports = {
 	...defaultConfig,
-	entry: {
-		'frontend/blocks': '/src/PaymentMethod.jsx',
-	},
+	entry: getComponentEntries(),
 	output: {
-		path: path.resolve( __dirname, 'assets/blocks' ),
+		path: path.resolve( __dirname, 'assets/components' ),
 		filename: '[name].js',
 	},
 	plugins: [

@@ -64,7 +64,15 @@ class Registrar
             add_action($action['name'], $action['callback'], isset($action['priority']) ? $action['priority'] : 10, isset($action['params']) ? $action['params'] : 1);
 
         add_action('rest_api_init', function () {
-            register_rest_route('mobbex/v1', '/widget', [
+            register_rest_route('mobbex/v1', '/widget/sources', [
+                'methods' => \WP_REST_Server::CREATABLE,
+                'callback' => [$this->product, 'get_product_sources'],
+                'permission_callback' => '__return_true',
+            ]);
+        });
+
+        add_action('rest_api_init', function () {
+            register_rest_route('mobbex/v1', '/widget/update', [
                 'methods' => \WP_REST_Server::CREATABLE,
                 'callback' => [$this->product, 'financial_widget_update'],
                 'permission_callback' => '__return_true',

@@ -1,37 +1,111 @@
 /* The Modal (background) */
 #mbbxProductModal {
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
+    /* display: none; */
+    /* Hidden by default */
+    position: fixed;
+    /* Stay in place */
     left: 0;
     top: 0;
-    width: 100%; /* Full width */
-    height: 100%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgb(0,0,0); /* Fallback color */
-    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    width: 100%;
+    /* Full width */
+    height: 100%;
+    /* Full height */
+    overflow: auto;
+    /* Enable scroll if needed */
+    background-color: rgb(0, 0, 0);
+    /* Fallback color */
+    background-color: rgba(0, 0, 0, 0.4);
+    /* Black w/ opacity */
     z-index: 99999999;
     place-items: center;
 }
 
 /* Modal Content/Box */
-#mbbxProductModalContent {
+#mbbx-installments-widget {
     background-color: #fefefe;
     padding: 20px;
     border: 1px solid #888;
-    max-width: 650px; /* Could be more or less, depending on screen size */
-    height: 90%; /* Full height */
-    width: 100%;
+    width: 60%;
+    height: 80%;
     z-index: 10000;
-    overflow-y: scroll;
     border-radius: 10px;
     box-sizing: border-box;
+    margin: auto;
+    margin-top: 20px;
 }
 
-#mbbxProductModalHeader {
+/** Widget header */
+.mbbx-installment-widget-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.mbbx-installment-widget-header button {
+    width: 30px;
+    height: 30px;
+    align-content: center;
+    text-align: center;
+    margin-left: 10px;
+}
+
+.mbbx-method-select {
+    background-color: rgba(255, 255, 255, 0);
+    width: 95%;
+    min-height: 40px;
+    padding: 0.5rem;
+    border: 1px #d8d8d8 solid;
+    border-radius: 5px;
+
+}
+
+/** Widget Body */
+
+#mbbxProductModalBody {
+    height: 90%;
+    overflow-y: scroll;
+}
+.mbbx-payment-method {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: bold;
+    background-color: rgba(185, 221, 243, 0.252);
+    border-radius: 1rem;
+    padding: 10px;
+}
+
+.mbbx-plan-card img {
+    height: 40px;
+    border-radius: 100%;
+    margin-right: 10px;
+}
+
+.mbbx-plan-table {
+    border: none;
+    width: 90%;
+    margin: 0 auto;
+}
+
+.mbbx-plan-table tr {
+    padding: 5px;
+    width: 100%;
     display: flex;
     justify-content: space-between;
-    flex-flow: wrap;
-    align-items: center;
+}
+
+.mbbx-plan-table td {
+    display: flex;
+    flex-direction: column;
+    width: 65%;
+    border: none;
+    padding-right: 0;
+}
+
+.mbbx-plan-table td small {
+    color: gray;
 }
 
 /* The Close Button */
@@ -46,29 +120,25 @@
     color: black;
     text-decoration: none;
     cursor: pointer;
-} 
- 
-#mbbxProductBtn{
-    padding: 20px;
 }
 
 /* Modal Scrollbar */
-#mbbxProductModalContent::-webkit-scrollbar {
+#mbbxProductModalBody::-webkit-scrollbar {
     width: 20px;
 }
 
-#mbbxProductModalContent::-webkit-scrollbar-track {
+#mbbxProductModalBody::-webkit-scrollbar-track {
     background-color: transparent;
 }
 
-#mbbxProductModalContent::-webkit-scrollbar-thumb {
+#mbbxProductModalBody::-webkit-scrollbar-thumb {
     background-color: #d6dee1;
     border-radius: 20px;
     border: 6px solid transparent;
     background-clip: content-box;
 }
 
-#mbbxProductModalContent::-webkit-scrollbar-thumb:hover {
+#mbbxProductModalBody::-webkit-scrollbar-thumb:hover {
     background-color: #a8bbbf;
 }
 
@@ -124,9 +194,30 @@
     border-radius: 5px;
 }
 
+/* Open Button */
+#mbbxFinanceWidget {
+    padding: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#mbbxProductBtn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#mbbxProductBtn img {
+    width: 15%;
+    margin-right: 10px;
+    border-radius: 50px;
+}
+
 /* DARK MODE  */
-.dark #mbbxProductModalContent,
-.dark #mbbxProductModalContent table td {
+.dark #mbbx-installments-widget,
+.dark #mbbx-installments-widget select,
+.dark #mbbx-installments-widget table td {
     background-color: rgb(39, 31, 36);
     color: rgb(226, 226, 226);
 }

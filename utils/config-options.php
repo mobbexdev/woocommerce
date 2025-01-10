@@ -195,12 +195,32 @@ return [
         'default'     => '#6f00ff',
     ],
 
+    'checkout_banner' => [
+        'title'       => __('Mobbex Banner in Checkout', 'mobbex-for-woocommerce'),
+        'description' => __('You can set a banner to show in Mobbex checkout. (ex. https://res.mobbex.com/ecommerce/mobbex_1.png).', 'mobbex-for-woocommerce'),
+        'type'        => 'text',
+        'default'     => '',
+        'class'       => 'mbbx-into-appearance',
+    ],
+
     'financial_widget_on_cart' => [
         'title'       => __('Widget de financiación en carrito', 'mobbex-for-woocommerce'),
         'description' => __('Mostrar el botón de financiación en la página del carrito.', 'mobbex-for-woocommerce'),
         'type'        => 'checkbox',
         'default'     => 'no',
         'class'       => 'mbbx-into-appearance',
+    ],
+
+    'financial_widget_type' => [
+        'title'   => __('Financial Widget Type', 'mobbex-for-woocommerce'),
+        'type'    => 'select',
+        'label'   => __('Select your favorite widget type.', 'mobbex-for-woocommerce'),
+        'options' => [
+            'embed'       => __('Embed', 'mobbex-for-woocommerce'),
+            'transparent' => __('Transparent', 'mobbex-for-woocommerce'),
+        ],
+        'default' => 'embed',
+        'class'   => 'mbbx-into-appearance',
     ],
 
     'financial_widget_button_text' => [
@@ -216,14 +236,6 @@ return [
         'description' => __('You can customize your financial widget button logo from here.', 'mobbex-for-woocommerce'),
         'type'        => 'text',
         'default'     => 'https://res.mobbex.com/images/sources/mobbex.png',
-        'class'       => 'mbbx-into-appearance',
-    ],
-
-    'checkout_banner' => [
-        'title'       => __('Mobbex Banner in Checkout', 'mobbex-for-woocommerce'),
-        'description' => __('You can set a banner to show in Mobbex checkout. (ex. https://res.mobbex.com/ecommerce/mobbex_1.png).', 'mobbex-for-woocommerce'),
-        'type'        => 'text',
-        'default'     => '',
         'class'       => 'mbbx-into-appearance',
     ],
 
