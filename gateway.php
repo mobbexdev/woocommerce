@@ -6,6 +6,7 @@ class WC_Gateway_Mobbex extends WC_Payment_Gateway
         'products',
         'refunds',
     );
+    public $id;
 
     /** @var \Mobbex\WP\Checkout\Model\Config */
     public $config;
@@ -29,6 +30,10 @@ class WC_Gateway_Mobbex extends WC_Payment_Gateway
         $this->helper = new \Mobbex\WP\Checkout\Model\Helper();
         $this->logger = new \Mobbex\WP\Checkout\Model\Logger();
 
+        if ($this->config->integration == 'wcs')
+            // Add wcs supports
+            $this->supports = apply_filters('mobbex_subs_support', $this->supports);
+
         // String variables. That's used on checkout view
         $this->icon        = apply_filters('mobbex_icon', plugin_dir_url(__FILE__) . 'icon.png');
         $this->title       = $this->config->title;
@@ -41,8 +46,11 @@ class WC_Gateway_Mobbex extends WC_Payment_Gateway
         $this->init_form_fields();
         $this->init_settings();
 
+
         // Always Required
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, [$this, 'process_admin_options']);
+        // Add wcs scheduled subscription payment support
+        add_action('woocommerce_scheduled_subscription_payment_' . $this->id , [$this, 'execute_scheduled_subscription_payment'], 10, 2);
     }
 
     /**
@@ -51,7 +59,10 @@ class WC_Gateway_Mobbex extends WC_Payment_Gateway
      */
     public function init_form_fields()
     {
-        $this->form_fields = include 'utils/config-options.php';
+        $form_fields = include 'utils/config-options.php';
+        $this->form_fields = $this->config->enable_subscription == 'yes'
+            ? array_merge($form_fields, include( MOBBEX_SUBS_DIR . '/utils/config-options.php'))
+            : $form_fields;
     }
 
     public function process_admin_options()
@@ -137,5 +148,18 @@ class WC_Gateway_Mobbex extends WC_Payment_Gateway
         } catch (\Exception $e) {
             return new \WP_Error($e->getCode(), $e->getMessage(), isset($e->data) ? $e->data : '');
         }
+    }
+
+    /**
+     * Execute scheduled subscription payment via Mobbex Subscriptions
+     * 
+     * @param float $renewal_total
+     * @param WC_Order $renewal_order
+     * 
+     */
+    public function execute_scheduled_subscription_payment($renewal_total, $renewal_order)
+    {
+        $this->logger->log('debug', 'gateway > execute_scheduled_subscription_payment | Creating payment', compact('renewal_total', 'renewal_order'));
+        return apply_filters('mobbex_subs_scheduled_payment', $renewal_total, $renewal_order);
     }
 }

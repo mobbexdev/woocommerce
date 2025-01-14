@@ -65,7 +65,7 @@
     }
 
     window.addEventListener('load', function () {
-        initConfigTabs(['appearance', 'advanced', 'orders']);
+        initConfigTabs(['appearance', 'advanced', 'orders', 'subscription']);
         addDynamicToDniFields();
     });
 }) (window)

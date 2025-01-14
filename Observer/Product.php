@@ -224,43 +224,4 @@ class Product
     {
         return (bool) $this->config->get_catalog_settings($product_id, 'mbbx_sub_enable');
     }
-
-    /**
-     * Add mobbex subscription fee to cart and checkout if it exists in the product
-     * 
-     * @param WC_Cart $cart
-     */
-    public function maybe_add_mobbex_subscription_fee($cart)
-    {
-        if ($cart->is_empty())
-            return;
-
-        foreach ( $cart->get_cart() as $item ){
-            $subscription = \Mobbex\Repository::getProductSubscription(
-                $this->config->get_product_subscription_uid($item['product_id']), 
-                true
-                );
-            isset($subscription['setupFee']) ? $cart->add_fee(__("{$subscription['name']} Sign-up Fee", 'woocommerce'), $subscription['setupFee'], false) : '';
-        }
-    }
-
-    /**
-     * Display sign up fee on product price
-     * 
-     * @param string $price_html
-     * @param WC_Product $product
-     * 
-     * @return string $sign_up_fee
-     */
-    public function display_sign_up_fee_on_price($price_html, $product)
-    {
-        // Sometimes the hook gets an array type product and avoid non subscription products
-        if (!is_object($product) || !$this->is_subscription($product->get_id()) )
-            return $price_html;
-
-        // Set sign up price
-        $sign_up_price = $this->config->get_product_subscription_signup_fee($product->get_id());
-
-        return $sign_up_price ? $price_html .= __(" /month and a $$sign_up_price sign-up fee") : $price_html;
-    }
 }

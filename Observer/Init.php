@@ -77,6 +77,7 @@ class Init
         if (($hook == 'post-new.php' || $hook == 'post.php') && $post->post_type == 'product') {
             wp_enqueue_style('mbbx-product-style', $dir_url . 'assets/css/product-admin.css', null, MOBBEX_VERSION);
             wp_enqueue_script('mbbx-product-js', $dir_url . 'assets/js/product-admin.js', null, MOBBEX_VERSION);
+            $this->config->integration == 'standalone' ? do_action('add_subscription_admin_scripts') : '';
         }
 
         // Category admin page

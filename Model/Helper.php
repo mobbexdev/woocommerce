@@ -28,6 +28,16 @@ class Helper
         return ($this->config->enabled === 'yes' && !empty($this->config->api_key) && !empty($this->config->access_token));
     }
 
+    /**
+     * Checks if Mobbex Subscription Extension is ready
+     * 
+     * @return bool
+     */
+    public function is_extension_ready()
+    {
+        return $this->config->enable_subscription == 'yes';
+    }
+
 
     /**
      * Get all product IDs from Order.
@@ -232,27 +242,32 @@ class Helper
      * 
      * @return string url
      */
-    public function get_api_endpoint($endpoint, $order_id)
+    public function get_api_endpoint($endpoint, $order_id = '')
     {
         // Create necessary query array
         $query = [
+            'wc-api'       => $endpoint,
+            'platform'     => "woocommerce",
+            'version'      => MOBBEX_VERSION,
             'mobbex_token' => \Mobbex\Repository::generateToken(),
-            'platform' => "woocommerce",
-            "version" => MOBBEX_VERSION,
         ];
 
         if ($order_id)
-            // Add mobbex order id
             $query['mobbex_order_id'] = $order_id;
     
-        if ($endpoint === 'mobbex_webhook') {
+        if ($endpoint === 'mobbex_webhook' || $endpoint == 'mobbex_subs_webhook') {
             if ($this->config->debug_mode != 'no')
-                // Add xdebug param to query
                 $query['XDEBUG_SESSION_START'] = 'PHPSTORM';
-            return add_query_arg($query, get_rest_url(null, 'mobbex/v1/webhook'));
-        } else 
-            // Add woocommerce api to query
-            $query['wc-api'] = $endpoint;
+
+            return add_query_arg(
+                $query,
+                $endpoint === 'mobbex_webhook' ?
+                get_rest_url(null, 'mobbex/v1/webhook') :
+                home_url('/')
+            );
+        }
+        
+        // Add woocommerce api to query
         return add_query_arg($query, home_url('/'));
     }
 

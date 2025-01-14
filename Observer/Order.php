@@ -151,6 +151,14 @@ class Order
 
         $id = $post ? $post->ID : $_REQUEST['id'];
 
+        $mbbx_order_helper = new \Mobbex\WP\Checkout\Helper\Order(wc_get_order($id));
+
+        // Get transaction data
+        $parent  = $mbbx_order_helper->get_parent_transaction();
+
+        if (!$parent)
+            return;
+
         //For compatibility with HPOS
         $screen = class_exists('\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController') && wc_get_container()->get(\Automattic\WooCommerce\Internal\DataStores\Orders\CustomOrdersTableController::class)->custom_orders_table_usage_is_enabled()
             ? wc_get_page_screen_id('shop-order')
@@ -158,26 +166,35 @@ class Order
 
         //Only displayed if a payment was made with Mobbex.
         if (($post->post_type == 'shop_order' || \Automattic\WooCommerce\Utilities\OrderUtil::is_order($id, wc_get_order_types())) && wc_get_order($id)->get_payment_method() == 'mobbex')
-            add_meta_box('mbbx_order_panel', __('Mobbex Payment Information', 'mobbex-for-woocommerce'), [$this, 'show_payment_info_panel'], $screen, 'side', 'core');
+            add_meta_box(
+                'mbbx_order_panel', 
+                __('Mobbex Payment Information', 'mobbex-for-woocommerce'), 
+                [$this, 'show_payment_info_panel'], 
+                $screen, 
+                'side', 
+                'core', 
+                [$post]
+            );
     }
 
     /**
      * Show payment information panel
+     * 
+     * @param mixed $post post order
+     *
      */
-    public function show_payment_info_panel()
+    public function show_payment_info_panel($post)
     {
-        global $post;
-
-        if (!isset($post->ID) && !isset($_REQUEST['id']))
-            return;
-
-        $id = $post ? $post->ID : $_REQUEST['id'];
-
-        $mbbxOrderHelp = new \Mobbex\WP\Checkout\Helper\Order(wc_get_order($id));
-
+        $mbbx_order_helper = new \Mobbex\WP\Checkout\Helper\Order(wc_get_order($post->ID));
         // Get transaction data
-        $parent  = $mbbxOrderHelp->get_parent_transaction();
-        $childs  = !empty($mbbxOrderHelp->get_child_transactions()) ? $mbbxOrderHelp->get_child_transactions() : $mbbxOrderHelp->format_childs($mbbxOrderHelp->id, $parent['childs'] ? json_decode($parent['childs'], true) : []);
+        $parent  = $mbbx_order_helper->get_parent_transaction();
+
+        $childs  = !empty($mbbx_order_helper->get_child_transactions()) ? 
+            $mbbx_order_helper->get_child_transactions() : 
+            $mbbx_order_helper->format_childs($mbbx_order_helper->id, $parent['childs'] ? 
+                json_decode($parent['childs'], true) : 
+                []
+            );
 
         echo "<table><th colspan='2' class = 'mbbx-info-panel-th'><h4><b>" . __('Payment Information') . "</b></h4></th>";
 

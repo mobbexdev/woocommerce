@@ -24,3 +24,4 @@ define('MOBBEX_LIST_PLANS', 'https://api.mobbex.com/p/sources/list/arg/{tax_id}?
 
 define('MOBBEX_PAYMENT_IMAGE', 'https://res.mobbex.com/images/sources/{reference}.png');
 
+define('MOBBEX_SUBS_DIR', plugin_dir_path( __DIR__ ) . 'vendor/mobbexco/woocommerce-subscriptions');

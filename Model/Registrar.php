@@ -92,9 +92,6 @@ class Registrar
             ['name' => 'woocommerce_payment_complete_order_status', 'callback' => [$this->order, 'set_approved_statuses'], 'params' => 2],
             //Checkout observer
             ['name' => 'woocommerce_billing_fields', 'callback' => [$this->checkout, 'add_checkout_fields']],
-            //Product Observer
-            ['name' => 'woocommerce_cart_calculate_fees', 'callback' => [$this->product, 'maybe_add_mobbex_subscription_fee'], 'params' => 2],
-            ['name' => 'woocommerce_get_price_html', 'callback' => [$this->product, 'display_sign_up_fee_on_price'], 'params' => 2]
         ];
 
         return $filters;

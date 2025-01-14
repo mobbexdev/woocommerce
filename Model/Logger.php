@@ -32,14 +32,14 @@ class Logger
         if ($mode === 'debug' && $this->config->debug_mode != 'yes')
             return;
         
+        $db = new \Mobbex\WP\Checkout\Model\Db;
         // Save log in database
-        (new \Mobbex\WP\Checkout\Model\Db)->insert(
+        $db->insert(
             'mobbex_log', ['type' => $mode, 'message'=> $message, 'data' => json_encode($data), 'creation_date' => date("Y-m-d h:i:sa")]
             );
 
         if($mode === 'fatal')
             $mode = 'critical';
-
 
         if ($mode === 'critical')
             die($message);
@@ -61,5 +61,11 @@ class Logger
             </div>
 <?php
         });
+    }
+
+    public function maybe_log_error($message, $data = [])
+    {
+        global $wpdb;
+        !empty($wpdb->last_error) && $this->log('debug', "$message {$wpdb->last_error}", $data);
     }
 }

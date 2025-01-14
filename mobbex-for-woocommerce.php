@@ -68,7 +68,7 @@ class MobbexGateway
         self::$logger    = new \Mobbex\WP\Checkout\Model\Logger();
         self::$registrar = new \Mobbex\WP\Checkout\Model\Registrar();
 
-        //Init de Mobbex php sdk
+        // init de Mobbex php sdk
         $this->init_sdk();
 
         MobbexGateway::check_dependencies();
@@ -128,6 +128,16 @@ class MobbexGateway
 
         // Init api conector
         \Mobbex\Api::init();
+    }
+    
+    public function init_mobbex_subscription()
+    {
+        if (!self::$config->enable_subscription)
+            return;
+
+        require_once MOBBEX_SUBS_DIR . '/mobbex-subscriptions.php';
+        $mobbexSubscriptions = new MobbexSubscriptions;
+        $mobbexSubscriptions->init();
     }
 
     /**
@@ -268,7 +278,6 @@ class MobbexGateway
 
     public static function add_gateway()
     {
-
         add_filter('woocommerce_payment_gateways', function ($methods) {
 
             $methods[] = MOBBEX_WC_GATEWAY;
@@ -313,7 +322,7 @@ class MobbexGateway
             new \Mobbex\WP\Checkout\Model\Db
         );
         
-        foreach (['transaction', 'cache', 'log'] as  $tableName) {
+        foreach (['log', 'transaction', 'cache' , 'subscription', 'subscriber', 'execution'] as  $tableName) {
             // Create the table or alter table if it exists
             $table = new \Mobbex\Model\Table($tableName);
             // If table creation fails, return false
@@ -322,11 +331,12 @@ class MobbexGateway
         }
         
         return true;
-    }
+    } 
 }
 
 $mobbexGateway = new MobbexGateway;
 add_action('init', [&$mobbexGateway, 'init']);
+add_action('init', [&$mobbexGateway, 'init_mobbex_subscription']);
 
 // Remove mbbx entity saved data on uninstall
 register_deactivation_hook(__FILE__, function() {
